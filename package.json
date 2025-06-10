@@ -1,0 +1,21 @@
+{
+  "name": "openai-backend-playground",
+  "version": "0.0.1",
+  "description": "Playground for the OpenAI API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["openai", "api", "backend", "fastify", "nodejs"],
+  "author": "Kevin Exton",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "fastify": "^4.24.3",
+    "openai": "^4.20.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
