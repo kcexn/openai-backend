@@ -1,4 +1,4 @@
-const { openai, getSessionMemory } = require('../openaiClient');
+const { openai, getSessionMemory } = require('../lib/openaiClient');
 const { HumanMessage, SystemMessage } = require("@langchain/core/messages");
 const { randomUUID } = require('node:crypto');
 
