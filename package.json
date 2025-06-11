@@ -23,6 +23,7 @@
     "@fastify/swagger-ui": "^5.2.3",
     "dotenv": "^16.3.1",
     "fastify": "^5.3.3",
+    "langchain": "^0.3.27",
     "openai": "^5.2.0"
   },
   "devDependencies": {

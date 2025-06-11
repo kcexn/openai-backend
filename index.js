@@ -2,7 +2,7 @@ require('dotenv').config();
 const app = require('fastify')({ logger: true });
 const port = process.env.PORT || 3000;
 
-const registerPlugins = require('./plugins');
+const { registerPlugins } = require('./plugins');
 const registerRoutes = require('./routes');
 
 (async () => {

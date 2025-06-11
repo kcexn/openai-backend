@@ -69,7 +69,7 @@ For all subsequent requests within the same conversation, you must send
 the saved session cookie back to the server. This allows the server to 
 retrieve the correct conversation history from the session store.
 ```bash
-curl -X POST http://localhost:3000api/chat \
+curl -X POST http://localhost:3000/api/chat \
 -H "Content-Type: application/json" \
 -d '{"prompt": "Tell me a joke about programming."}' \
 -b cookiejar.txt

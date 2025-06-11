@@ -4,6 +4,8 @@ const fastifyCookie = require('@fastify/cookie');
 const fastifySession = require('@fastify/session');
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const SESSION_MAX_AGE = 1000 * 60 * 30; // 30 minutes in milliseconds
+
 
 async function registerPlugins(app, port) {
   await app.register(fastifySwagger, {
@@ -43,7 +45,7 @@ async function registerPlugins(app, port) {
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 1000 * 60 * 30 // Session expires after 30 minutes of inactivity
+      maxAge: SESSION_MAX_AGE
     },
     rolling: true, // Reset the session cookie's maxAge on every response
     saveUninitialized: false,
@@ -51,4 +53,7 @@ async function registerPlugins(app, port) {
   });
 }
 
-module.exports = registerPlugins;
+module.exports = {
+    registerPlugins,
+    SESSION_MAX_AGE
+};

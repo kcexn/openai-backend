@@ -1,4 +1,8 @@
-const openai = require('../openaiClient'); // Adjusted path
+const openai = require('../openaiClient');
+const { ChatMessageHistory } = require("langchain/memory");
+const { HumanMessage, AIMessage, SystemMessage } = require("@langchain/core/messages");
+const { randomUUID } = require('crypto');
+const { SESSION_MAX_AGE } = require('../plugins');
 
 const chatSchema = {
     description: 'Send a prompt to the OpenAI chat model and get a completion.',
@@ -39,6 +43,23 @@ const chatSchema = {
     }
 };
 
+const CLEANUP_INTERVAL = Math.max(SESSION_MAX_AGE/10, 1000*60*5);
+const chatHistories = new Map();
+
+setInterval(() => {
+  const now = Date.now();
+  let cleanedCount = 0;
+  for (const [sessionId, data] of chatHistories.entries()) {
+    if (data.expiresAt < now) {
+      chatHistories.delete(sessionId);
+      cleanedCount++;
+    }
+  }
+  if (cleanedCount > 0) {
+    console.log(`[ChatHistoryCleanup] Removed ${cleanedCount} expired chat histories.`);
+  }
+}, CLEANUP_INTERVAL);
+
 module.exports = async function (app) {
   app.post('/api/chat', { schema: chatSchema }, async (request, reply) => {
     try {
@@ -49,22 +70,48 @@ module.exports = async function (app) {
         return;
       }
 
-      if (!request.session.messages) {
-        request.session.messages = [];
+      let sessionId = request.session.sessionId;
+      if (!sessionId) {
+        sessionId = randomUUID();
+        request.session.sessionId = sessionId;
       }
-      if (request.session.messages.length === 0) {
-        request.session.messages.push({
-            role: 'system',
-            content: 'You are an evil monster.'
-        });
+
+      const newExpiresAt = Date.now() + SESSION_MAX_AGE;
+      let sessionHistoryData = chatHistories.get(sessionId);
+      let chatHistory;
+      
+      if (sessionHistoryData) {
+        chatHistory = sessionHistoryData.history;
+        chatHistories.set(sessionId, { history: chatHistory, expiresAt: newExpiresAt });
+      } else {
+        chatHistory = new ChatMessageHistory();
+        await chatHistory.addMessage(new SystemMessage('You are an evil monster.'));
+        chatHistories.set(sessionId, { history: chatHistory, expiresAt: newExpiresAt });
       }
-      request.session.messages.push({ role: 'user', content: prompt });
+      await chatHistory.addMessage(new HumanMessage(prompt));
+
+      const messagesForOpenAI = (await chatHistory.getMessages()).map(msg => {
+        let role;
+        const type = msg.getType();
+        if (type === 'human') {
+            role = 'user';
+        } else if (type === 'ai') {
+            role = 'assistant';
+        } else if (type === 'system') {
+            role = 'system';
+        } else {
+          app.log.warn(`Unknown LangChain message type: ${type}, defaulting to 'user'`);
+          role = 'user';
+        }
+        return { role: role, content: msg.content };
+      });
       const completion = await openai.chat.completions.create({
-        messages: request.session.messages,
+        messages: messagesForOpenAI,
         model: model,
       });
 
-      request.session.messages.push(completion.choices[0].message);
+      const aiResponse = completion.choices[0].message;
+      await chatHistory.addMessage(new AIMessage(aiResponse.content));
       reply.send(completion.choices[0].message);
     } catch (error) {
       app.log.error('Error calling OpenAI:', error.message);
