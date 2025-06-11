@@ -1,8 +1,8 @@
 const openai = require('../openaiClient');
 const { ConversationTokenBufferMemory } = require("langchain/memory");
 const { SystemMessage, HumanMessage } = require("@langchain/core/messages");
-const { randomUUID } = require('crypto');
 const { SESSION_MAX_AGE } = require('../plugins');
+const { randomUUID } = require('node:crypto');
 
 const chatSchema = {
     description: 'Send a prompt to the OpenAI chat model and get a completion.',
@@ -44,14 +44,14 @@ const chatSchema = {
 };
 
 const CLEANUP_INTERVAL = Math.max(SESSION_MAX_AGE/10, 1000*60*5);
-const chatHistories = new Map();
+const sessionHistories = new Map();
 
 setInterval(() => {
   const now = Date.now();
   let cleanedCount = 0;
-  for (const [sessionId, data] of chatHistories.entries()) {
+  for (const [sessionId, data] of sessionHistories.entries()) {
     if (data.expiresAt < now) {
-      chatHistories.delete(sessionId);
+      sessionHistories.delete(sessionId);
       cleanedCount++;
     }
   }
@@ -77,12 +77,12 @@ module.exports = async function (app) {
       }
 
       const newExpiresAt = Date.now() + SESSION_MAX_AGE;
-      let sessionHistoryData = chatHistories.get(sessionUuid);
+      let sessionHistoryData = sessionHistories.get(sessionUuid);
       let sessionMemory;
       
       if (sessionHistoryData) {
         sessionMemory = sessionHistoryData.memory;
-        chatHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
+        sessionHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
       } else {
         sessionMemory = new ConversationTokenBufferMemory({
             llm: openai,
@@ -90,7 +90,7 @@ module.exports = async function (app) {
             returnMessages: true
         });
         await sessionMemory.chatHistory.addMessage(new SystemMessage("You are an evil monster."));
-        chatHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
+        sessionHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
       }
 
       const memoryVariables = await sessionMemory.loadMemoryVariables({});
