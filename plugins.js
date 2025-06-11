@@ -6,7 +6,6 @@ const fastifySession = require('@fastify/session');
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_MAX_AGE = 1000 * 60 * 30; // 30 minutes in milliseconds
 
-
 async function registerPlugins(app, port) {
   await app.register(fastifySwagger, {
     openapi: {

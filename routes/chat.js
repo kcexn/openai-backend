@@ -1,6 +1,6 @@
 const openai = require('../openaiClient');
-const { ChatMessageHistory } = require("langchain/memory");
-const { HumanMessage, AIMessage, SystemMessage } = require("@langchain/core/messages");
+const { ConversationTokenBufferMemory } = require("langchain/memory");
+const { SystemMessage, HumanMessage } = require("@langchain/core/messages");
 const { randomUUID } = require('crypto');
 const { SESSION_MAX_AGE } = require('../plugins');
 
@@ -62,57 +62,46 @@ setInterval(() => {
 
 module.exports = async function (app) {
   app.post('/api/chat', { schema: chatSchema }, async (request, reply) => {
-    try {
-      const { prompt, model = 'gpt-3.5-turbo' } = request.body;
+    try {      
+      const { prompt, model = openai.model } = request.body;
 
       if (!prompt) {
         reply.code(400).send({ error: 'Prompt is required' });
         return;
       }
 
-      let sessionId = request.session.sessionId;
-      if (!sessionId) {
-        sessionId = randomUUID();
-        request.session.sessionId = sessionId;
+      let sessionUuid = request.session.sessionUuid;
+      if (!sessionUuid) {
+        sessionUuid = randomUUID();
+        request.session.sessionUuid = sessionUuid;
       }
 
       const newExpiresAt = Date.now() + SESSION_MAX_AGE;
-      let sessionHistoryData = chatHistories.get(sessionId);
-      let chatHistory;
+      let sessionHistoryData = chatHistories.get(sessionUuid);
+      let sessionMemory;
       
       if (sessionHistoryData) {
-        chatHistory = sessionHistoryData.history;
-        chatHistories.set(sessionId, { history: chatHistory, expiresAt: newExpiresAt });
+        sessionMemory = sessionHistoryData.memory;
+        chatHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
       } else {
-        chatHistory = new ChatMessageHistory();
-        await chatHistory.addMessage(new SystemMessage('You are an evil monster.'));
-        chatHistories.set(sessionId, { history: chatHistory, expiresAt: newExpiresAt });
+        sessionMemory = new ConversationTokenBufferMemory({
+            llm: openai,
+            maxTokenLimit: openai.maxTokens,
+            returnMessages: true
+        });
+        await sessionMemory.chatHistory.addMessage(new SystemMessage("You are an evil monster."));
+        chatHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
       }
-      await chatHistory.addMessage(new HumanMessage(prompt));
 
-      const messagesForOpenAI = (await chatHistory.getMessages()).map(msg => {
-        let role;
-        const type = msg.getType();
-        if (type === 'human') {
-            role = 'user';
-        } else if (type === 'ai') {
-            role = 'assistant';
-        } else if (type === 'system') {
-            role = 'system';
-        } else {
-          app.log.warn(`Unknown LangChain message type: ${type}, defaulting to 'user'`);
-          role = 'user';
-        }
-        return { role: role, content: msg.content };
-      });
-      const completion = await openai.chat.completions.create({
-        messages: messagesForOpenAI,
-        model: model,
-      });
-
-      const aiResponse = completion.choices[0].message;
-      await chatHistory.addMessage(new AIMessage(aiResponse.content));
-      reply.send(completion.choices[0].message);
+      const memoryVariables = await sessionMemory.loadMemoryVariables({});
+      let currentMessages = memoryVariables.history || [];
+      if (!Array.isArray(currentMessages)) {
+        currentMessages = [];
+      }
+      currentMessages.push(new HumanMessage(prompt));
+      const aiResponse = await openai.invoke(currentMessages, { model });
+      await sessionMemory.saveContext({ input: prompt }, { output: aiResponse.content });
+      reply.send({ role: 'assistant', content: aiResponse.content });
     } catch (error) {
       app.log.error('Error calling OpenAI:', error.message);
       reply.code(500).send({ error: 'Failed to communicate with OpenAI', details: error.message });

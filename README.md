@@ -1,7 +1,7 @@
 # OpenAI Backend
 
 A simple Node.js and Fastify backend for interacting with the OpenAI API, 
-featuring session management and OpenAPI documentation.
+featuring chat history and OpenAPI documentation.
 
 ## Prerequisites
 
