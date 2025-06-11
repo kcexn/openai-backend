@@ -1,7 +1,5 @@
-const openai = require('../openaiClient');
-const { ConversationTokenBufferMemory } = require("langchain/memory");
-const { SystemMessage, HumanMessage } = require("@langchain/core/messages");
-const { SESSION_MAX_AGE } = require('../plugins');
+const { openai, getSessionMemory } = require('../openaiClient');
+const { HumanMessage, SystemMessage } = require("@langchain/core/messages");
 const { randomUUID } = require('node:crypto');
 
 const chatSchema = {
@@ -43,23 +41,6 @@ const chatSchema = {
     }
 };
 
-const CLEANUP_INTERVAL = Math.max(SESSION_MAX_AGE/10, 1000*60*5);
-const sessionHistories = new Map();
-
-setInterval(() => {
-  const now = Date.now();
-  let cleanedCount = 0;
-  for (const [sessionId, data] of sessionHistories.entries()) {
-    if (data.expiresAt < now) {
-      sessionHistories.delete(sessionId);
-      cleanedCount++;
-    }
-  }
-  if (cleanedCount > 0) {
-    console.log(`[ChatHistoryCleanup] Removed ${cleanedCount} expired chat histories.`);
-  }
-}, CLEANUP_INTERVAL);
-
 module.exports = async function (app) {
   app.post('/api/chat', { schema: chatSchema }, async (request, reply) => {
     try {      
@@ -72,33 +53,20 @@ module.exports = async function (app) {
 
       let sessionUuid = request.session.sessionUuid;
       if (!sessionUuid) {
-        sessionUuid = randomUUID();
-        request.session.sessionUuid = sessionUuid;
+          sessionUuid = randomUUID();
+          request.session.sessionUuid = sessionUuid;
       }
 
-      const newExpiresAt = Date.now() + SESSION_MAX_AGE;
-      let sessionHistoryData = sessionHistories.get(sessionUuid);
-      let sessionMemory;
+      const SYSTEM_MESSAGE = 'You are an evil monster.';
+      const sessionMemory = getSessionMemory(sessionUuid);
+      sessionMemory.maxTokenLimit = Math.max(openai.maxTokens-SYSTEM_MESSAGE.length, 100);
       
-      if (sessionHistoryData) {
-        sessionMemory = sessionHistoryData.memory;
-        sessionHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
-      } else {
-        sessionMemory = new ConversationTokenBufferMemory({
-            llm: openai,
-            maxTokenLimit: openai.maxTokens,
-            returnMessages: true
-        });
-        await sessionMemory.chatHistory.addMessage(new SystemMessage("You are an evil monster."));
-        sessionHistories.set(sessionUuid, { memory: sessionMemory, expiresAt: newExpiresAt });
-      }
-
       const memoryVariables = await sessionMemory.loadMemoryVariables({});
-      let currentMessages = memoryVariables.history || [];
-      if (!Array.isArray(currentMessages)) {
-        currentMessages = [];
-      }
-      currentMessages.push(new HumanMessage(prompt));
+      let currentMessages = [
+        new SystemMessage(SYSTEM_MESSAGE),
+        ...memoryVariables.history,
+        new HumanMessage(prompt),
+      ];
       const aiResponse = await openai.invoke(currentMessages, { model });
       await sessionMemory.saveContext({ input: prompt }, { output: aiResponse.content });
       reply.send({ role: 'assistant', content: aiResponse.content });
