@@ -2,9 +2,15 @@ const fastifySwagger = require('@fastify/swagger');
 const fastifySwaggerUI = require('@fastify/swagger-ui');
 const fastifyCookie = require('@fastify/cookie');
 const fastifySession = require('@fastify/session');
+const Redis = require('ioredis');
+const { RedisStore } = require("connect-redis");
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_MAX_AGE = 1000 * 60 * 30; // 30 minutes in milliseconds
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+const redisClient = new Redis(REDIS_URL);
+redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 async function registerPlugins(app, port) {
   await app.register(fastifySwagger, {
@@ -46,13 +52,18 @@ async function registerPlugins(app, port) {
       httpOnly: true,
       maxAge: SESSION_MAX_AGE
     },
-    rolling: true, // Reset the session cookie's maxAge on every response
+    rolling: true,
     saveUninitialized: false,
-    // store: new SomePersistentStore()
+    store: new RedisStore({
+      client: redisClient,
+      prefix: 'sess:',
+      ttl: Math.floor(SESSION_MAX_AGE / 1000)
+    })
   });
 }
 
 module.exports = {
     registerPlugins,
-    SESSION_MAX_AGE
+    SESSION_MAX_AGE,
+    redisClient
 };

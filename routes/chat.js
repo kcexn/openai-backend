@@ -1,5 +1,5 @@
-const { openai, getSessionMemory } = require('../lib/openaiClient');
-const { HumanMessage, SystemMessage } = require("@langchain/core/messages");
+const { getOpenAI, getSessionMemory } = require('../lib/openaiClient');
+const { ChatPromptTemplate, MessagesPlaceholder } = require("@langchain/core/prompts");
 const { randomUUID } = require('node:crypto');
 
 const chatSchema = {
@@ -41,10 +41,15 @@ const chatSchema = {
     }
 };
 
+const promptTemplate = ChatPromptTemplate.fromMessages([
+  ["system", "{systemMessage}"],
+  new MessagesPlaceholder("history"),
+  ["human", "{prompt}"]
+]);
 module.exports = async function (app) {
-  app.post('/api/chat', { schema: chatSchema }, async (request, reply) => {
-    try {      
-      const { prompt, model = openai.model } = request.body;
+  app.post('/chat', { schema: chatSchema }, async (request, reply) => {
+    try {
+      const { prompt, model } = request.body;
 
       if (!prompt) {
         reply.code(400).send({ error: 'Prompt is required' });
@@ -58,18 +63,18 @@ module.exports = async function (app) {
       }
 
       const SYSTEM_MESSAGE = 'You are an evil monster.';
-      const sessionMemory = getSessionMemory(sessionUuid);
-      sessionMemory.maxTokenLimit = Math.max(openai.maxTokens-SYSTEM_MESSAGE.length, 100);
-      
+      const ai = getOpenAI(model);
+      const sessionMemory = getSessionMemory(sessionUuid, ai);
       const memoryVariables = await sessionMemory.loadMemoryVariables({});
-      let currentMessages = [
-        new SystemMessage(SYSTEM_MESSAGE),
-        ...memoryVariables.history,
-        new HumanMessage(prompt),
-      ];
-      const aiResponse = await openai.invoke(currentMessages, { model });
+
+      const messages = await promptTemplate.invoke({
+        systemMessage: SYSTEM_MESSAGE,
+        history: [...memoryVariables.history],
+        prompt 
+      });
+      const aiResponse = await ai.invoke(messages);
       await sessionMemory.saveContext({ input: prompt }, { output: aiResponse.content });
-      reply.send({ role: 'assistant', content: aiResponse.content });
+      reply.send({ role: 'assistant', content: aiResponse.text });
     } catch (error) {
       app.log.error('Error calling OpenAI:', error.message);
       reply.code(500).send({ error: 'Failed to communicate with OpenAI', details: error.message });
