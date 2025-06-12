@@ -17,6 +17,7 @@ const redisClient = new Redis(REDIS_URL, {
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 async function registerPlugins(app, port) {
+  const productionUrl = process.env.PRODUCTION_URL;
   await app.register(fastifySwagger, {
     openapi: {
       info: {
@@ -24,7 +25,9 @@ async function registerPlugins(app, port) {
         description: 'A Fastify proxy for interacting with the OpenAI API, with auto-generated OpenAPI documentation.',
         version: '0.1.0'
       },
-      servers: [{ url: `http://localhost:${port}`, description: 'Local server' }],
+      servers: process.env.NODE_ENV === 'production'
+        ? (productionUrl ? [{ url: productionUrl, description: 'Production server' }] : [])
+        : [{ url: `http://localhost:${port}`, description: 'Local development server' }],
       components: {},
       tags: [
         { name: 'OpenAI', description: 'Endpoints related to OpenAI services' }
@@ -32,11 +35,13 @@ async function registerPlugins(app, port) {
     }
   });
 
+
   await app.register(fastifySwaggerUI, {
     routePrefix: '/docs',
     uiConfig: {
       docExpansion: 'full',
-      deepLinking: false
+      deepLinking: false,
+      withCredentials: true
     },
     uiHooks: {
       onRequest: function (request, reply, next) { next(); },
