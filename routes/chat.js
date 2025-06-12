@@ -74,10 +74,10 @@ module.exports = async function (app) {
       });
       const aiResponse = await ai.invoke(messages);
       await sessionMemory.saveContext({ input: prompt }, { output: aiResponse.content });
-      reply.send({ role: 'assistant', content: aiResponse.text });
+      return reply.send({ role: 'assistant', content: aiResponse.text });
     } catch (error) {
       app.log.error('Error calling OpenAI:', error.message);
-      reply.code(500).send({ error: 'Failed to communicate with OpenAI', details: error.message });
+      return reply.code(500).send({ error: 'Failed to communicate with OpenAI', details: error.message });
     }
   });
 };

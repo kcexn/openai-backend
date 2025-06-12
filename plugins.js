@@ -7,9 +7,13 @@ const { RedisStore } = require("connect-redis");
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_MAX_AGE = 1000 * 60 * 30; // 30 minutes in milliseconds
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
-const redisClient = new Redis(REDIS_URL);
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisClient = new Redis(REDIS_URL, {
+  username: process.env.REDIS_USER,
+  password: process.env.REDIS_PASSWORD,
+  enableReadyCheck: REDIS_URL === 'redis://localhost:6379',
+});
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 async function registerPlugins(app, port) {
