@@ -69,6 +69,7 @@ async function registerPlugins(app, port) {
       sameSite: 'none',
       httpOnly: true,
       maxAge: SESSION_MAX_AGE,
+      partitioned: true,
     },
     rolling: true,
     saveUninitialized: false,
