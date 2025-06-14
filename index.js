@@ -1,5 +1,8 @@
 require('dotenv').config();
-const app = require('fastify')({ logger: true });
+const app = require('fastify')({ 
+  logger: true,
+  trustProxy: process.env.NODE_ENV==='production'
+});
 const port = process.env.PORT || 3000;
 
 const { registerPlugins } = require('./plugins');

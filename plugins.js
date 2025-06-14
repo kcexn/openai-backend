@@ -2,6 +2,7 @@ const fastifySwagger = require('@fastify/swagger');
 const fastifySwaggerUI = require('@fastify/swagger-ui');
 const fastifyCookie = require('@fastify/cookie');
 const fastifySession = require('@fastify/session');
+const fastifyCors = require('@fastify/cors');
 const Redis = require('ioredis');
 const { RedisStore } = require("connect-redis");
 
@@ -18,6 +19,13 @@ redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 async function registerPlugins(app, port) {
   const productionUrl = process.env.PRODUCTION_URL;
+  const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',');
+  await app.register(fastifyCors, {
+    origin: allowedOrigins,
+    methods: ['POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
   await app.register(fastifySwagger, {
     openapi: {
       info: {
@@ -58,8 +66,9 @@ async function registerPlugins(app, port) {
     secret: SESSION_SECRET,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
       httpOnly: true,
-      maxAge: SESSION_MAX_AGE
+      maxAge: SESSION_MAX_AGE,
     },
     rolling: true,
     saveUninitialized: false,
