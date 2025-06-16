@@ -62,7 +62,7 @@ module.exports = async function (app) {
           request.session.sessionUuid = sessionUuid;
       }
 
-      const SYSTEM_MESSAGE = 'You are an evil monster.';
+      const SYSTEM_MESSAGE = 'You are a helpful AI assistant.';
       const ai = getOpenAI(model);
       const sessionMemory = getSessionMemory(sessionUuid, ai);
       const memoryVariables = await sessionMemory.loadMemoryVariables({});
