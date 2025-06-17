@@ -22,7 +22,7 @@ async function registerPlugins(app, port) {
   const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',');
   await app.register(fastifyCors, {
     origin: allowedOrigins,
-    methods: ['POST', 'OPTIONS'],
+    methods: ['POST', 'OPTIONS', 'GET', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
