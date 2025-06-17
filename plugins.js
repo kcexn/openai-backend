@@ -65,11 +65,13 @@ async function registerPlugins(app, port) {
   await app.register(fastifySession, {
     secret: SESSION_SECRET,
     cookie: {
+      name: 'sessionId',
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
       httpOnly: true,
       maxAge: SESSION_MAX_AGE,
       partitioned: true,
+      path: '/',
     },
     rolling: true,
     saveUninitialized: false,
