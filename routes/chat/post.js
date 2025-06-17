@@ -1,8 +1,8 @@
-const { getOpenAI, getSessionMemory } = require('../lib/openaiClient');
+const { getOpenAI, getSessionMemory } = require('../../lib/openaiClient');
 const { ChatPromptTemplate, MessagesPlaceholder } = require("@langchain/core/prompts");
 const { randomUUID } = require('node:crypto');
 
-const chatSchema = {
+const schema = {
     description: 'Send a prompt to the OpenAI chat model and get a completion.',
     tags: ['OpenAI'],
     summary: 'Chat with OpenAI model',
@@ -47,13 +47,12 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
   ["human", "{prompt}"]
 ]);
 module.exports = async function (app) {
-  app.post('/chat', { schema: chatSchema }, async (request, reply) => {
+  app.post('/chat', { schema }, async (request, reply) => {
     try {
       const { prompt, model } = request.body;
 
       if (!prompt) {
-        reply.code(400).send({ error: 'Prompt is required' });
-        return;
+        return reply.code(400).send({ error: 'Prompt is required' });
       }
 
       let sessionUuid = request.session.sessionUuid;
