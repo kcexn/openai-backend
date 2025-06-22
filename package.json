@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "openai",
@@ -33,6 +35,8 @@
     "redis": "^5.5.6"
   },
   "devDependencies": {
+    "eslint": "^9.29.0",
+    "globals": "^15.9.0",
     "nodemon": "^3.1.10"
   }
 }

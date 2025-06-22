@@ -4,7 +4,7 @@ const fastifyCookie = require('@fastify/cookie');
 const fastifySession = require('@fastify/session');
 const fastifyCors = require('@fastify/cors');
 const Redis = require('ioredis');
-const { RedisStore } = require("connect-redis");
+const { RedisStore } = require('connect-redis');
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_MAX_AGE = 1000 * 60 * 30; // 30 minutes in milliseconds
@@ -31,16 +31,16 @@ async function registerPlugins(app, port) {
       info: {
         title: 'OpenAI API Proxy with Fastify',
         description: 'A Fastify proxy for interacting with the OpenAI API, with auto-generated OpenAPI documentation.',
-        version: '0.1.0'
+        version: '0.1.0',
       },
       servers: process.env.NODE_ENV === 'production'
         ? (productionUrl ? [{ url: productionUrl, description: 'Production server' }] : [])
         : [{ url: `http://localhost:${port}`, description: 'Local development server' }],
       components: {},
       tags: [
-        { name: 'OpenAI', description: 'Endpoints related to OpenAI services' }
-      ]
-    }
+        { name: 'OpenAI', description: 'Endpoints related to OpenAI services' },
+      ],
+    },
   });
 
 
@@ -49,16 +49,16 @@ async function registerPlugins(app, port) {
     uiConfig: {
       docExpansion: 'full',
       deepLinking: false,
-      withCredentials: true
+      withCredentials: true,
     },
     uiHooks: {
-      onRequest: function (request, reply, next) { next(); },
-      preHandler: function (request, reply, next) { next(); }
+      onRequest: function (_request, _reply, next) { next(); },
+      preHandler: function (_request, _reply, next) { next(); },
     },
     staticCSP: true,
     transformStaticCSP: (header) => header,
-    transformSpecification: (swaggerObject, request, reply) => { return swaggerObject; },
-    transformSpecificationClone: true
+    transformSpecification: (swaggerObject, _request, _reply) => { return swaggerObject; },
+    transformSpecificationClone: true,
   });
 
   await app.register(fastifyCookie);
@@ -78,13 +78,13 @@ async function registerPlugins(app, port) {
     store: new RedisStore({
       client: redisClient,
       prefix: 'sess:',
-      ttl: Math.floor(SESSION_MAX_AGE / 1000)
-    })
+      ttl: Math.floor(SESSION_MAX_AGE / 1000),
+    }),
   });
 }
 
 module.exports = {
-    registerPlugins,
-    SESSION_MAX_AGE,
-    redisClient
+  registerPlugins,
+  SESSION_MAX_AGE,
+  redisClient,
 };

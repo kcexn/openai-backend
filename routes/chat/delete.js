@@ -1,20 +1,20 @@
 const schema = {
-    description: 'Delete the chat session.',
-    tags: ['OpenAI'],
-    summary: 'Delete the chat session.',
-    response: {
-        204: {
-            description: 'Successfully deleted the chat session.',
-        },
-        500: {
-            description: 'Internal Server Error',
-            type: 'object',
-            properties: {
-                error: { type: 'string' },
-                details: { type: 'string' }
-            }
-        }
-    }
+  description: 'Delete the chat session.',
+  tags: ['OpenAI'],
+  summary: 'Delete the chat session.',
+  response: {
+    204: {
+      description: 'Successfully deleted the chat session.',
+    },
+    500: {
+      description: 'Internal Server Error',
+      type: 'object',
+      properties: {
+        error: { type: 'string' },
+        details: { type: 'string' },
+      },
+    },
+  },
 };
 
 module.exports = async function (app) {
